@@ -12,7 +12,9 @@
 # either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
+from contextlib import suppress
 from sqlalchemy import schema
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.ddl import CreateSequence, DropSequence
 
@@ -40,8 +42,11 @@ class HANAImpl(DefaultImpl):
     transactional_ddl = True
 
     def start_migrations(self):
-        # Activate transactional DDL statements
+        """Activate transactional DDL statements and lock alembic table."""
         self.execute("SET TRANSACTION AUTOCOMMIT DDL OFF")
+        # table might not exist in an empty application which can be ignored
+        with suppress(ProgrammingError):
+            self.execute("LOCK TABLE ALEMBIC_VERSION IN EXCLUSIVE MODE")
 
 
 @compiles(AddColumn, "hana")
